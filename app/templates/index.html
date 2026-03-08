@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}BizScorer - Dashboard{% endblock %}
+{% block content %}
+<h1>Business Leaderboard</h1>
+<div id="leaderboard-container">
+    <p>Loading leaderboard...</p>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function loadLeaderboard() {
+    const container = document.getElementById('leaderboard-container');
+    try {
+        const data = await fetchJSON('/api/scores/leaderboard?limit=20');
+        if (data.length === 0) {
+            container.innerHTML = '<p>No businesses scored yet. <a href="/submit">Submit one!</a></p>';
+            return;
+        }
+        let html = `<table>
+            <thead><tr>
+                <th>Rank</th><th>Business</th><th>Industry</th><th>Score</th><th>Grade</th><th></th>
+            </tr></thead><tbody>`;
+        data.forEach((item, i) => {
+            html += `<tr>
+                <td>${i + 1}</td>
+                <td>${escapeHtml(item.business_name)}</td>
+                <td>${escapeHtml(item.industry)}</td>
+                <td><span class="score-badge">${item.overall_score.toFixed(1)}</span></td>
+                <td><span class="grade grade-${item.grade.replace('+', 'plus')}">${item.grade}</span></td>
+                <td><a href="/report/${item.business_id}">View Report</a></td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    } catch (err) {
+        container.innerHTML = '<p>Error loading leaderboard.</p>';
+    }
+}
+loadLeaderboard();
+</script>
+{% endblock %}

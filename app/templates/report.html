@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}BizScorer - Report{% endblock %}
+{% block content %}
+<div id="report-container">
+    <p>Loading report...</p>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const businessId = {{ business_id }};
+
+function barColor(score) {
+    if (score >= 70) return '#22c55e';
+    if (score >= 40) return '#eab308';
+    return '#ef4444';
+}
+
+async function loadReport() {
+    const container = document.getElementById('report-container');
+    try {
+        const [biz, score] = await Promise.all([
+            fetchJSON('/api/businesses/' + businessId),
+            fetchJSON('/api/scores/' + businessId),
+        ]);
+        const categories = [
+            { label: 'Financial Health', key: 'financial_health' },
+            { label: 'Online Presence', key: 'online_presence' },
+            { label: 'Customer Satisfaction', key: 'customer_satisfaction' },
+            { label: 'Operational Efficiency', key: 'operational_efficiency' },
+            { label: 'Compliance', key: 'compliance' },
+        ];
+        let barsHtml = categories.map(c => `
+            <div class="score-bar-row">
+                <span class="score-bar-label">${c.label}</span>
+                <div class="score-bar-track">
+                    <div class="score-bar-fill" style="width:${score[c.key]}%;background:${barColor(score[c.key])}"></div>
+                </div>
+                <span class="score-bar-value">${score[c.key].toFixed(1)}</span>
+            </div>
+        `).join('');
+
+        container.innerHTML = `
+            <div class="report-header">
+                <div>
+                    <h1>${escapeHtml(biz.name)}</h1>
+                    <p class="subtitle">${escapeHtml(biz.industry)} · ${biz.years_in_operation || '?'} years</p>
+                </div>
+                <div class="overall-score">
+                    <div class="score-number">${score.overall_score.toFixed(1)}</div>
+                    <div class="grade grade-${score.grade.replace('+', 'plus')}">${score.grade}</div>
+                </div>
+            </div>
+            <div class="score-breakdown">
+                <h2>Score Breakdown</h2>
+                ${barsHtml}
+            </div>
+            <button class="btn" onclick="recalculate()">Recalculate Score</button>
+            <a href="/" class="btn btn-secondary">Back to Dashboard</a>
+        `;
+    } catch (err) {
+        container.innerHTML = '<p>Error loading report: ' + escapeHtml(err.message) + '</p>';
+    }
+}
+
+async function recalculate() {
+    await fetchJSON('/api/scores/calculate/' + businessId, { method: 'POST' });
+    loadReport();
+}
+
+loadReport();
+</script>
+{% endblock %}
